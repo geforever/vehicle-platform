@@ -1,0 +1,11 @@
+{
+  "outPath": "src/main/resources/static",
+  "packageFilters": "org.platform.vehicle.controller",
+  "allInOne": true,
+  "projectName": "vehicle-management",
+  "requestHeaders": [
+    {
+      "Authorization": "Authorization"
+    }
+  ]
+}

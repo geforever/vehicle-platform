@@ -1,0 +1,87 @@
+server:
+  port: 28005
+
+spring:
+  application:
+    name: vehicle-gateway
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册地址
+        server-addr: 127.0.0.1:8848
+        group:
+        namespace:
+        username:
+        password:
+      config:
+        # 配置中心地址
+        server-addr: 127.0.0.1:8848
+        # 配置文件格式
+        file-extension: yaml
+        namespace:
+        # 组
+        group:
+        # 开启自动刷新
+        refresh-enabled: true
+        username: nacos
+        password: nacos
+    gateway:
+      # 跨域
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      discovery:
+        locator:
+          # 小写serviceID
+          lowerCaseServiceId: true
+          # 为true,自动创建路由,路由访问方式：http://Gateway_HOST:Gateway_PORT/serviceId/**，其中微服务应用名默认大写访问
+          enabled: true
+      routes:
+        # 认证中心
+        - id: vehicle-oauth
+          # 注册的服务名称
+          uri: lb://vehicle-oauth
+          predicates:
+            - Path=/vehicle-oauth/**
+          filters:
+            - StripPrefix=1
+        # 管理服务
+        - id: vehicle-management
+          # 注册的服务名称
+          uri: lb://vehicle-management
+          predicates:
+            - Path=/vehicle-management/**
+          filters:
+            - StripPrefix=1
+        # jt808服务
+        - id: vehicle-jt808
+          # 注册的服务名称
+          uri: lb://vehicle-jt808
+          predicates:
+            - Path=/vehicle-jt808/**
+          filters:
+            - StripPrefix=1
+      # 熔断器
+      default-filters:
+        - name: Hystrix
+          args:
+            name: fallbackCmdA
+            fallbackUri: forward:/fallbackA
+
+# 默认接口超时时间
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 60000
+
+# Nacos 注册中心客户端心跳日志禁用 get changedGroupKeys:[] 刷屏
+logging:
+  level:
+    com.alibaba.nacos.client.config.impl: WARN
+

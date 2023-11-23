@@ -1,0 +1,72 @@
+server:
+  port: 28002
+
+#数据源配置
+spring:
+  application:
+    name: vehicle-consumer
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册地址
+        server-addr: 127.0.0.1:8848
+        group:
+        namespace:
+        username:
+        password:
+      config:
+        # 配置中心地址
+        server-addr: 127.0.0.1:8848
+        # 配置文件格式
+        file-extension: yaml
+        namespace:
+        group:
+        # 开启自动刷新
+        refresh-enabled: true
+        username:
+        password:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/vehicle_platform?useUnicode=true&characterEncoding=UTF-8&useSSL=false&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true
+    username:
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      connect-properties:
+        druid.stat.merge-sql: true
+        druid.stat.slow-sql-millis: 5000
+  elasticsearch:
+    rest:
+      uris: http://127.0.0.1:9200,http://127.0.0.1:9200,http://127.0.0.1:9200
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: admin
+    password: admin
+    listener:
+      simple:
+        default-requeue-rejected: false
+        acknowledge-mode: manual
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+#redis哨兵配置
+redis:
+  sentinel:
+    master: master
+    nodes: 127.0.0.1:26379,127.0.0.1:26379,127.0.0.1:26379
+  password:
+  database: 1
+
+feign:
+  client:
+    config:
+      default:
+        # 连接超时时间（毫秒）
+        connectTimeout: 50000
+        # 读取超时时间（毫秒）
+        readTimeout: 100000
+# 入库批处理大小
+vehicle:
+  execute_batch_size: 100

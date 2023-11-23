@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.platform.vehicle.mapper.AssetTireMapper">
+
+  <resultMap type="org.platform.vehicle.entity.AssetTire" id="AssetTireMap">
+    <result property="id" column="id" jdbcType="INTEGER"/>
+    <result property="code" column="code" jdbcType="VARCHAR"/>
+    <result property="clientId" column="client_id" jdbcType="INTEGER"/>
+    <result property="fleetId" column="fleet_id" jdbcType="INTEGER"/>
+    <result property="warehouseId" column="warehouse_id" jdbcType="INTEGER"/>
+    <result property="licensePlate" column="license_plate" jdbcType="VARCHAR"/>
+    <result property="tireSite" column="tire_site" jdbcType="VARCHAR"/>
+    <result property="tireSiteType" column="tire_site_type" jdbcType="VARCHAR"/>
+    <result property="tireBrandId" column="tire_brand_id" jdbcType="INTEGER"/>
+    <result property="tireSpecId" column="tire_spec_id" jdbcType="INTEGER"/>
+    <result property="degree" column="degree" jdbcType="VARCHAR"/>
+    <result property="mileage" column="mileage" jdbcType="INTEGER"/>
+    <result property="sensorId" column="sensor_id" jdbcType="VARCHAR"/>
+    <result property="hasSensor" column="has_sensor" jdbcType="VARCHAR"/>
+    <result property="sensorType" column="sensor_type" jdbcType="VARCHAR"/>
+    <result property="tireStatus" column="tire_status" jdbcType="VARCHAR"/>
+    <result property="isDelete" column="is_delete" jdbcType="VARCHAR"/>
+    <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    <result property="createPerson" column="create_person" jdbcType="VARCHAR"/>
+    <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    <result property="updatePerson" column="update_person" jdbcType="VARCHAR"/>
+  </resultMap>
+
+  <select id="fitConditionQuery" parameterType="org.platform.vehicle.param.AssetTireFitConditionQuery"
+    resultType="org.platform.vehicle.dto.AssetTireFitDto">
+    select
+    a.license_plate as licensePlate,
+    a.gua_license_plate as guaLicensePlate,
+    c.id as vehicleSpecId,
+    (c.wheel_count is not null) as hasWheelCount,
+    a.wheels_complete as wheelsComplete,
+    a.sensors_complete as sensorsComplete
+    from `t_vehicle` a
+    LEFT JOIN `asset_tire` b on b.license_plate = a.license_plate
+    LEFT JOIN `t_vehicle_spec` c on a.spec_id = c.id
+    where 1 = 1
+    <if test="param.customerIds != null and param.customerIds.size > 0">
+      and a.customer_id in
+      <foreach collection="param.customerIds" item="customerId" open="(" separator="," close=")">
+        #{customerId}
+      </foreach>
+    </if>
+    <if test="param.customerId != null">
+      and a.customer_id = #{param.customerId}
+    </if>
+    <if test="param.licensePlate != null and param.licensePlate != ''">
+      and a.license_plate = #{param.licensePlate}
+    </if>
+    <if test="param.bindType != null">
+      <if test="param.bindType == 1">
+        and a.sensors_complete = true
+      </if>
+      <if test="param.bindType == 2">
+        and c.wheel_count is null
+      </if>
+      <if test="param.bindType == 3">
+        and a.sensors_complete = false
+      </if>
+      <if test="param.bindType == 4">
+        and a.wheels_complete = false
+      </if>
+    </if>
+    group by a.license_plate
+    order by a.update_time desc
+  </select>
+</mapper>
+

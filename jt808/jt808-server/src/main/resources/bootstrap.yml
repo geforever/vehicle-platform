@@ -1,0 +1,8 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+  profiles:
+    active: test

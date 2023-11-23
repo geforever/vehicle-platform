@@ -1,0 +1,71 @@
+server:
+  port: 28003
+
+spring:
+  application:
+    name: vehicle-jt808
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册地址
+        server-addr: 192.168.188.121:9670
+        group: mx_vehicle
+        namespace: 54506516-87c5-4063-b472-7bff216e6e19
+        username: nacos
+        password: nacos
+      config:
+        # 配置中心地址
+        server-addr: 192.168.188.121:9670
+        # 配置文件格式
+        file-extension: yaml
+        # 命名空间
+        # dev
+        namespace: 54506516-87c5-4063-b472-7bff216e6e19
+        # 组
+        group: mx_vehicle
+        # 开启自动刷新
+        refresh-enabled: true
+        username: nacos
+        password: nacos
+  rabbitmq:
+    host: 192.168.188.158
+    port: 5672
+    username: mxadmin
+    password: mxadmin
+    listener:
+      simple:
+        default-requeue-rejected: false
+        acknowledge-mode: manual
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+      date: yyyy-MM-dd
+      time: HH:mm:ss
+
+jt-server:
+  jt808:
+    enable: true
+    port:
+      udp: 7611
+      tcp: 7611
+    media-file:
+      path: D:/jt_data/media_file
+    alarm-file:
+      host: 127.0.0.1
+      port: 7612
+
+  alarm-file:
+    enable: true
+    port: 7612
+    path: D:/jt_data/alarm_file
+
+redis:
+  sentinel:
+    master: mymaster
+    nodes: 192.168.188.159:26379,192.168.160.160:26379,192.168.160.161:26379
+  password: zxy198307
+  database: 9
+
