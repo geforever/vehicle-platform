@@ -1,0 +1,57 @@
+# Tomcat
+server:
+  port: 28000
+
+#数据源配置
+spring:
+  application:
+    name: vehicle-oauth
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册地址
+        server-addr: 127.0.0.1:8848
+        group:
+        namespace:
+        username:
+        password:
+      config:
+        # 配置中心地址
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        namespace:
+        group:
+        # 开启自动刷新
+        refresh-enabled: true
+        username:
+        password:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/vehicle_platform?useUnicode=true&characterEncoding=UTF-8&useSSL=false&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true
+    username:
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      connect-properties:
+        druid.stat.merge-sql: true
+        druid.stat.slow-sql-millis: 5000
+
+#redis哨兵配置
+redis:
+  sentinel:
+    master: master
+    nodes: 127.0.0.1:26379,127.0.0.1:26379,127.0.0.1:26379
+  password:
+  database: 1
+
+#fastDFS配置
+fdfs:
+  connect-timeout: 30000
+  so-timeout: 30000
+  web-server-url: https://127.0.0.1:12443/download/
+  pool.max-total-per-key: 500
+  tracker-list: 127.0.0.1:22122
+  http:
+    anti_steal_token: true
+    secret_key: secretKey
+

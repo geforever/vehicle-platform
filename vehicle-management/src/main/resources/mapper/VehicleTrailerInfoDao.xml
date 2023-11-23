@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.platform.vehicle.mapper.VehicleTrailerInfoMapper">
+
+  <resultMap id="VehicleTrailerInfoDtoMap" type="org.platform.vehicle.dto.VehicleTrailerInfoDto">
+    <id property="licensePlate" column="licensePlate"/>
+    <result property="mainLicensePlate" column="mainLicensePlate"/>
+    <result property="minorLicensePlate" column="minorLicensePlate"/>
+    <result property="mainRelayId" column="mainRelayId"/>
+    <result property="minorRelayId" column="minorRelayId"/>
+    <result property="type" column="type"/>
+    <result property="specType" column="specType"/>
+    <collection property="warningDetailList" ofType="org.platform.vehicle.dto.WarningDetailDto">
+      <result property="licensePlate" column="licensePlate"/>
+      <result property="tireSite" column="tireSite"/>
+      <result property="warningType" column="warningType"/>
+    </collection>
+  </resultMap>
+
+  <select id="conditionQuery" parameterType="org.platform.vehicle.param.WarmPressingConditionQuery"
+    resultType="org.platform.vehicle.dto.VehicleTrailerInfoDto">
+    SELECT d.license_plate as licensePlate,
+    d.receiver_id_number as receiverIdNumber,
+    d.main_license_plate as mainlicensePlate,
+    d.minor_license_plate as minorlicensePlate,
+    d.main_relay_id as mainRelayId,
+    d.minor_relay_id as minorRelayId,
+    d.type,
+    # d.warningType,
+    d.specType
+    FROM (SELECT a.license_plate,
+    a.receiver_id_number,
+    b.main_license_plate,
+    b.minor_license_plate,
+    b.main_relay_id,
+    b.minor_relay_id,
+    ifnull(b.type, 0) as type,
+    # g.warning_type as warningType,
+    e.spec_type as specType
+    FROM t_vehicle a
+    LEFT JOIN vehicle_trailer_info b ON a.license_plate = b.main_license_plate
+    LEFT JOIN t_vehicle_spec e ON a.spec_id = e.id
+    left join jtt808_tire_newest_data f on a.receiver_id_number = f.client_id
+    left join warning_detail g on a.receiver_id_number = g.receiver_id and f.serial_no = g.serial_no
+    where 1 = 1
+    <if test="param.customerIds != null and param.customerIds.size > 0">
+      and a.customer_id in
+      <foreach collection="param.customerIds" item="customerId" open="(" separator="," close=")">
+        #{customerId}
+      </foreach>
+    </if>
+    <if test="param.customerId != null">
+      and a.customer_id = #{param.customerId}
+    </if>
+    <if test="param.licensePlate != null and param.licensePlate != ''">
+      and a.license_plate = #{param.licensePlate}
+    </if>
+    <if test="param.status != null and param.status != ''">
+      and g.warning_type = #{param.status}
+      and g.is_recovery = 0
+    </if>
+    group by a.license_plate
+    ) d
+    where d.type != 2
+  </select>
+</mapper>
+

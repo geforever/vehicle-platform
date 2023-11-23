@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.platform.vehicle.mapper.WarningDetailMapper">
+
+  <resultMap type="org.platform.vehicle.entity.WarningDetail" id="WarningDetailMap">
+    <result property="id" column="id" jdbcType="INTEGER"/>
+    <result property="licensePlate" column="license_plate" jdbcType="VARCHAR"/>
+    <result property="tireCode" column="tire_code" jdbcType="VARCHAR"/>
+    <result property="tireSite" column="tire_site" jdbcType="INTEGER"/>
+    <result property="tireSiteName" column="tire_site_name" jdbcType="VARCHAR"/>
+    <result property="warningType" column="warning_type" jdbcType="INTEGER"/>
+    <result property="pressure" column="pressure" jdbcType="VARCHAR"/>
+    <result property="temperature" column="temperature" jdbcType="VARCHAR"/>
+    <result property="pressureThreshold" column="pressure_threshold" jdbcType="VARCHAR"/>
+    <result property="temperatureThreshold" column="temperature_threshold" jdbcType="VARCHAR"/>
+    <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+  </resultMap>
+
+
+  <select id="conditionQuery" parameterType="org.platform.vehicle.param.WarmPressingConditionQuery"
+    resultType="org.platform.vehicle.dto.WarmPressingDto">
+    select
+    a.customer_id as customerId,
+    a.fleet_id as fleetId,
+    a.license_plate as licensePlate,
+    a.gua_license_plate as guaLicensePlate,
+    b.tire_code as tireCode,
+    b.tire_site_name as tireSiteName,
+    a.is_running as isRunning,
+    IFNULL(b.warning_type, 0) as warningType
+    from t_vehicle a
+    LEFT JOIN warning_detail b ON a.license_plate = b.license_plate
+    where 1 = 1
+    <if test="param.customerId != null">
+      and a.customer_id = #{param.customerId}
+    </if>
+    <if test="param.customerIds != null and param.customerIds.size > 0">
+      and a.customer_id in
+      <foreach collection="param.customerIds" item="customerId" open="(" separator="," close=")">
+        #{customerId}
+      </foreach>
+    </if>
+    <if test="param.licensePlate != null and param.licensePlate != ''">
+      and a.license_plate = #{orderConditionQueryParam.licensePlate}
+    </if>
+    <if test="param.status != null">
+      <if test="param.status == 0">
+        and b.warning_type is null
+      </if>
+      <if test="param.status != 0">
+        and b.warning_type = #{param.status}
+      </if>
+    </if>
+    group by a.license_plate
+    order by a.create_time desc, b.create_time desc
+  </select>
+
+  <select id="selectLatestWarnings" resultType="org.platform.vehicle.dto.WarningDetailDto">
+    SELECT
+    license_plate as licensePlate,
+    tire_site as tireSite,
+    warning_type as warningType
+    FROM
+    (
+    SELECT
+    license_plate,
+    tire_site,
+    warning_type
+    FROM
+    warning_detail
+    WHERE
+    license_plate = #{licensePlate}
+    AND tire_site IN
+    <foreach collection="tireSiteList" item="tireSite" open="(" close=")" separator=",">
+      #{tireSite}
+    </foreach>
+    ORDER BY create_time DESC
+    ) AS a
+    GROUP BY tire_site
+  </select>
+
+</mapper>
+

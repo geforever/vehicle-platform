@@ -1,0 +1,90 @@
+server:
+  port: 28001
+
+#数据源配置
+spring:
+  application:
+    name: vehicle-management
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册地址
+        server-addr: 127.0.0.1:8848
+        group:
+        namespace:
+        username:
+        password:
+      config:
+        # 配置中心地址
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        # 命名空间
+        namespace:
+        group:
+        # 开启自动刷新
+        refresh-enabled: true
+        username:
+        password:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/vehicle_platform?useUnicode=true&characterEncoding=UTF-8&useSSL=false&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&rewriteBatchedStatements=true
+    username:
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    druid:
+      initial-size: 5
+      max-active: 20
+      min-idle: 1
+      max-wait: 5000
+  data:
+    elasticsearch:
+      repositories:
+        enable: true
+      cluster-name:
+      cluster-nodes:
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#redis哨兵配置
+redis:
+  sentinel:
+    master: master
+    nodes: 127.0.0.1:26379,127.0.0.1:26379,127.0.0.1:26379
+  password: admin
+  database: 1
+
+#fastDFS配置
+fdfs:
+  connect-timeout: 30000
+  so-timeout: 30000
+  web-server-url: https://127.0.0.1:12443/download/
+  pool.max-total-per-key: 500
+  tracker-list: 127.0.0.1:22122
+  http:
+    anti_steal_token: true
+    secret_key: secretKey
+
+#微信公众号id
+wxpay:
+  appId:
+  appSecret:
+  gzhId:
+  #微信公众号secret
+  gzhSecret:
+  #微信公众号token
+  token: access_token
+  #微信公众号模板ID 发送告警
+  warning_template_id:
+
+#高德地图key
+amap:
+  key: '************************'
+
+warning_interval:
+  # 紧急类告警时间间隔(小时)
+  common_interval: 1
+  # 常规类一般告警(小时)
+  common_power_offOver_interval: 72
+  # 常规类无信号报警断电告警超时时间间隔(小时)
+  common_power_off_over_interval: 72
+  # 常规类无信号报警通电告警超时时间间隔(小时)
+  common_power_on_over_interval: 6
