@@ -1667,7 +1667,7 @@ public class AssetTireServiceImpl implements AssetTireService {
         customerTypeIdList.add(SysCustomerConstant.SECOND_LEVEL_FLEET_TYPE);
         List<SysCustomer> fleetList = sysCustomerMapper.selectList(
                 new LambdaQueryWrapper<SysCustomer>()
-                        .eq(SysCustomer::getCompanyId, user.getCompanyId())
+                        .in(SysCustomer::getId, user.getCustomerIds())
                         .in(SysCustomer::getType, customerTypeIdList)
                         .eq(SysCustomer::getIsDelete, false));
         // 查询所有仓库
@@ -1744,7 +1744,7 @@ public class AssetTireServiceImpl implements AssetTireService {
         customerTypeIdList.add(SysCustomerConstant.SECOND_LEVEL_FLEET_TYPE);
         List<SysCustomer> fleetList = sysCustomerMapper.selectList(
                 new LambdaQueryWrapper<SysCustomer>()
-                        .eq(SysCustomer::getCompanyId, user.getCompanyId())
+                        .in(SysCustomer::getId, user.getCustomerIds())
                         .in(SysCustomer::getType, customerTypeIdList)
                         .eq(SysCustomer::getIsDelete, false));
         // 查询所有仓库
