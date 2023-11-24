@@ -460,19 +460,19 @@ public class WarningTraceRecordServiceImpl implements WarningTraceRecordService 
         UserVo user = UserContext.getUser();
         // 查询车辆总数
         Long totalVehicleCount = vehicleMapper.selectCount(new LambdaQueryWrapper<VehicleEntity>()
-                .eq(VehicleEntity::getFleetId, user.getCustomerIds()));
+                .in(VehicleEntity::getFleetId, user.getCustomerIds()));
         // 查询车辆已绑定中继器总数
         Long vehicleBoundCount = vehicleMapper.selectCount(new LambdaQueryWrapper<VehicleEntity>()
-                .eq(VehicleEntity::getFleetId, user.getCustomerIds())
+                .in(VehicleEntity::getFleetId, user.getCustomerIds())
                 .eq(VehicleEntity::getIsDeleted, false)
                 .isNotNull(VehicleEntity::getRepeaterIdNumber));
         // 查询所有轮胎总数
         Long totalTireCount = assetTireMapper.selectCount(new LambdaQueryWrapper<AssetTire>()
-                .eq(AssetTire::getFleetId, user.getCustomerIds())
+                .in(AssetTire::getFleetId, user.getCustomerIds())
                 .eq(AssetTire::getIsDelete, AssetTireConstant.NOT_DELETE));
         // 查询轮胎已绑定传感器总数
         Long tireBoundCount = assetTireMapper.selectCount(new LambdaQueryWrapper<AssetTire>()
-                .eq(AssetTire::getFleetId, user.getCustomerIds())
+                .in(AssetTire::getFleetId, user.getCustomerIds())
                 .eq(AssetTire::getIsDelete, AssetTireConstant.NOT_DELETE)
                 .eq(AssetTire::getHasSensor, AssetTireConstant.IS_BIND_SENSOR));
         VehicleAndTireStatisticVo vehicleAndTireStatisticVo = new VehicleAndTireStatisticVo();
