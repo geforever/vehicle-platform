@@ -42,7 +42,6 @@ public class AmapUtil {
      */
     public ConvertCoordVo convertCoord(String longitude, String latitude) {
         String location = longitude + "," + latitude;
-//        String weatherInfoKey = "fff8c38bd13a6e75faa0d93d823daa67";
         // 请求高德坐标转换接口
         String url =
                 CONVERT_COORD_URL + "?locations=" + location + "&coordsys=gps&key="
@@ -59,7 +58,6 @@ public class AmapUtil {
      * @return
      */
     public RegeocodeResultVo regeocode(String location) {
-//        String weatherInfoKey = "fff8c38bd13a6e75faa0d93d823daa67";
         String url = REVERSE_GEOCODE_URL + "?location=" + location + "&key=" + weatherInfoKey;
         String result = HttpUtil.get(url);
         RegeocodeResultVo regeocodeVo = JSON.parseObject(result, RegeocodeResultVo.class);
@@ -74,7 +72,6 @@ public class AmapUtil {
      * @return
      */
     public AmapWeatherInfoVo getWeatherInfo(String city) {
-//        String weatherInfoKey = "fff8c38bd13a6e75faa0d93d823daa67";
         // 请求高德天气接口
         String url = WEATHER_INFO_URL + "?city=" + city + "&key=" + weatherInfoKey;
         String result = HttpUtil.get(url);
@@ -84,10 +81,6 @@ public class AmapUtil {
 
     public static void main(String[] args) {
         AmapUtil amapUtil = new AmapUtil();
-//        ConvertCoordVo convertCoordVo = amapUtil.convertCoord("113.193620,28.197771");
-//        System.out.println(JSON.toJSONString(convertCoordVo));
-//        RegeocodeResultVo regeocodeVo = amapUtil.regeocode("113.199375,28.194478352865");
-//        System.out.println(JSON.toJSONString(regeocodeVo));
         AmapWeatherInfoVo weatherInfo = amapUtil.getWeatherInfo("430121");
         System.out.println(JSON.toJSONString(weatherInfo));
     }

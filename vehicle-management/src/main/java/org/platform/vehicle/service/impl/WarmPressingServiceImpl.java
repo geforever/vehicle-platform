@@ -531,13 +531,13 @@ public class WarmPressingServiceImpl implements WarmPressingService {
             if (StringUtils.isBlank(minorVehicle.getReceiverIdNumber())) {
                 return BaseResponse.failure("挂车车辆接收器ID为空");
             }
-            Mono<String> result = jt808FeignService.trailerHangOn(
+            jt808FeignService.trailerHangOn(
                     mainVehicle.getReceiverIdNumber(), minorVehicle.getReceiverIdNumber());
-            result.subscribe();
+
         } else if (param.getType() == 2) {
-            Mono<String> result = jt808FeignService.trailerHangUnder(
+            jt808FeignService.trailerHangUnder(
                     mainVehicle.getReceiverIdNumber());
-            result.subscribe();
+
         }
         return BaseResponse.ok();
     }
@@ -648,19 +648,18 @@ public class WarmPressingServiceImpl implements WarmPressingService {
         }
         // 绑定主车中继器
         if (param.getType() == 1) {
-            Mono<String> result = jt808FeignService.bindRepeater(1, vehicle.getReceiverIdNumber(),
+            jt808FeignService.bindRepeater(1, vehicle.getReceiverIdNumber(),
                     param.getMainRelay());
-            result.subscribe();
+
             // 绑定主车挂车中继器
         } else if (param.getType() == 2) {
-            Mono<String> mainResult = jt808FeignService.bindRepeater(1,
+            jt808FeignService.bindRepeater(1,
                     vehicle.getReceiverIdNumber(),
                     param.getMainRelay());
-            mainResult.subscribe();
-            Mono<String> minorResult = jt808FeignService.bindRepeater(1,
+
+            jt808FeignService.bindRepeater(1,
                     vehicle.getReceiverIdNumber(),
                     param.getMinorRelay());
-            minorResult.subscribe();
         }
         return BaseResponse.ok();
     }
@@ -818,9 +817,9 @@ public class WarmPressingServiceImpl implements WarmPressingService {
             taiya.add(tirePressureIntervalParam);
         }
         syncIntervalParam.setTaiya(taiya);
-        Mono<String> result = jt808FeignService.syncInterval(mainVehicle.getReceiverIdNumber(),
+        jt808FeignService.syncInterval(mainVehicle.getReceiverIdNumber(),
                 JSON.toJSONString(syncIntervalParam));
-        result.subscribe();
+
         return BaseResponse.ok();
     }
 

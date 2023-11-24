@@ -13,7 +13,7 @@ public interface Jt808FeignService {
      *
      * @param clientId
      */
-    Mono<String> trailerHangOn(String clientId, String chuanganqiId);
+    void trailerHangOn(String clientId, String chuanganqiId);
 
     /**
      * 挂车下挂
@@ -21,7 +21,7 @@ public interface Jt808FeignService {
      * @param clientId
      * @return
      */
-    Mono<String> trailerHangUnder(String clientId);
+    void trailerHangUnder(String clientId);
 
     /**
      * 同步阈值
@@ -30,7 +30,7 @@ public interface Jt808FeignService {
      * @param thresholdJson
      * @return
      */
-    Mono<String> syncInterval(String clientId, String thresholdJson);
+    void syncInterval(String clientId, String thresholdJson);
 
     /**
      * 绑定中继器
@@ -40,7 +40,7 @@ public interface Jt808FeignService {
      * @param repeaterId
      * @return
      */
-    Mono<String> bindRepeater(Integer vehicleType, String clientId, String repeaterId);
+    void bindRepeater(Integer vehicleType, String clientId, String repeaterId);
 
     /**
      * 同步轮位

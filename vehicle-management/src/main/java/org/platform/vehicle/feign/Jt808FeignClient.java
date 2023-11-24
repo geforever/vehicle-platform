@@ -20,7 +20,7 @@ public interface Jt808FeignClient {
      * @return
      */
     @PostMapping("/mx/shanggua")
-    Mono<String> trailerHangOn(@RequestParam String clientId, String chuanganqiId);
+    void trailerHangOn(@RequestParam String clientId, String chuanganqiId);
 
     /**
      * 挂车下挂
@@ -29,7 +29,7 @@ public interface Jt808FeignClient {
      * @return
      */
     @PostMapping("/mx/xiagua")
-    Mono<String> trailerHangUnder(@RequestParam String clientId);
+    void trailerHangUnder(@RequestParam String clientId);
 
     /**
      * 同步阈值
@@ -39,7 +39,7 @@ public interface Jt808FeignClient {
      * @return
      */
     @PostMapping("/mx/yuzhi")
-    Mono<String> syncInterval(@RequestParam String clientId, @RequestParam String thresholdJson);
+    void syncInterval(@RequestParam String clientId, @RequestParam String thresholdJson);
 
     /**
      * 下发中继器绑定指令
@@ -49,7 +49,7 @@ public interface Jt808FeignClient {
      * @param zhongjiqiId 中继器ID（6位的数字或字母）
      **/
     @PostMapping("/mx/zhongjiqi")
-    Mono<String> bindRepeater(@RequestParam Integer cheType, @RequestParam String clientId,
+    void bindRepeater(@RequestParam Integer cheType, @RequestParam String clientId,
             @RequestParam String zhongjiqiId);
 
     /**
@@ -61,7 +61,7 @@ public interface Jt808FeignClient {
      * @param chuanganqiId 传感器ID（6位的数字或字母）
      **/
     @PostMapping("/mx/lunwei")
-    Mono<String> syncWheel(@RequestParam Integer cheType, @RequestParam Integer luntaiNum,
+    void syncWheel(@RequestParam Integer cheType, @RequestParam Integer luntaiNum,
             @RequestParam String clientId, @RequestParam String chuanganqiId);
 
 }

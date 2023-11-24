@@ -24,8 +24,8 @@ public class Jt808FeignServiceImpl implements Jt808FeignService {
      * @return
      */
     @Override
-    public Mono<String> trailerHangOn(String clientId, String chuanganqiId) {
-        return jt808FeignClient.trailerHangOn(clientId, chuanganqiId);
+    public void trailerHangOn(String clientId, String chuanganqiId) {
+        jt808FeignClient.trailerHangOn(clientId, chuanganqiId);
     }
 
     /**
@@ -35,8 +35,8 @@ public class Jt808FeignServiceImpl implements Jt808FeignService {
      * @return
      */
     @Override
-    public Mono<String> trailerHangUnder(String clientId) {
-        return jt808FeignClient.trailerHangUnder(clientId);
+    public void trailerHangUnder(String clientId) {
+        jt808FeignClient.trailerHangUnder(clientId);
     }
 
     /**
@@ -47,8 +47,8 @@ public class Jt808FeignServiceImpl implements Jt808FeignService {
      * @return
      */
     @Override
-    public Mono<String> syncInterval(String clientId, String thresholdJson) {
-        return jt808FeignClient.syncInterval(clientId, thresholdJson);
+    public void syncInterval(String clientId, String thresholdJson) {
+        jt808FeignClient.syncInterval(clientId, thresholdJson);
     }
 
     /**
@@ -60,8 +60,8 @@ public class Jt808FeignServiceImpl implements Jt808FeignService {
      * @return
      */
     @Override
-    public Mono<String> bindRepeater(Integer vehicleType, String clientId, String repeaterId) {
-        return jt808FeignClient.bindRepeater(vehicleType, clientId, repeaterId);
+    public void bindRepeater(Integer vehicleType, String clientId, String repeaterId) {
+        jt808FeignClient.bindRepeater(vehicleType, clientId, repeaterId);
     }
 
     /**

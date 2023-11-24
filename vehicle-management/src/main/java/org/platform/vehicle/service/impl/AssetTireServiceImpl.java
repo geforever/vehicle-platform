@@ -995,7 +995,7 @@ public class AssetTireServiceImpl implements AssetTireService {
         AssetTire assetTire = assetTireMapper.selectOne(
                 new LambdaQueryWrapper<AssetTire>()
                         .eq(AssetTire::getCode, param.getTireCode())
-                        .eq(AssetTire::getClientId, user.getCompanyId())
+                        .in(AssetTire::getFleetId, user.getCustomerIds())
                         .eq(AssetTire::getIsDelete, AssetTireConstant.NOT_DELETE));
         if (assetTire == null) {
             return BasePageResponse.failure("轮胎不存在");
