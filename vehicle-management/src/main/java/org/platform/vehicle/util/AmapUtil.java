@@ -6,6 +6,7 @@ import org.platform.vehicle.vo.amap.AmapWeatherInfoVo;
 import org.platform.vehicle.vo.amap.ConvertCoordVo;
 import org.platform.vehicle.vo.amap.RegeocodeResultVo;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * @Date 2023/10/11 15:58
  */
 @Component
+@RefreshScope
 public class AmapUtil {
 
     /**
