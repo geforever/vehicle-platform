@@ -53,7 +53,7 @@ public interface WarmPressingService {
      *
      * @param param
      */
-    void trailerInstallCallback(TrailerInstallCallbackParam param);
+    void trailerUnInstallCallback(TrailerInstallCallbackParam param);
 
     /**
      * 温压管理-实时温压-根据车牌获取中继器ID
@@ -119,4 +119,6 @@ public interface WarmPressingService {
      * @param response
      */
     void export(WarmPressingExportParam param, HttpServletResponse response);
+
+
 }

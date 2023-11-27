@@ -4,6 +4,10 @@ import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_
 import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_POWER_OFF;
 import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_RUNNING;
 import static org.platform.vehicle.constant.LocalWarningConstant.WARNING_TYPE_MAIN_POWER_OFF;
+import static org.platform.vehicle.constant.WarningPressureConstant.BINDING_RELAY_KEY_PREFIX;
+import static org.platform.vehicle.constant.WarningPressureConstant.SYNC_THRESHOLD_KEY_PREFIX;
+import static org.platform.vehicle.constant.WarningPressureConstant.SYNC_WHEEL_KEY_PREFIX;
+import static org.platform.vehicle.constant.WarningPressureConstant.VEHICLE_HANG_KEY_PREFIX;
 
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
@@ -11,6 +15,7 @@ import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.concurrent.TimeUnit;
 import org.platform.vehicle.conf.ExcelCellWidthStyleStrategy;
 import org.platform.vehicle.conf.VehicleSpecContext;
 import org.platform.vehicle.constant.AssetTireConstant;
@@ -107,6 +112,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -136,6 +142,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
     private final NewestGeoLocationMapper newestGeoLocationMapper;
     private final TireNewestDataMapper tireNewestDataMapper;
     private final DynamicIndex dynamicIndex;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 温压管理-实时温压-车辆条件查询
@@ -509,9 +516,6 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                         .eq(VehicleTrailerInfo::getMinorLicensePlate, param.getMainLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
                                 VehicleTrailerInfoConstant.TYPE_MINOR_MAIN));
-//        if (main == null || minor == null) {
-//            return BaseResponse.failure("主挂信息不存在");
-//        }
         // 查询主挂车辆信息
         VehicleEntity mainVehicle = vehicleMapper.selectOne(new LambdaQueryWrapper<VehicleEntity>()
                 .eq(VehicleEntity::getLicensePlate, param.getMainLicensePlate())
@@ -526,18 +530,27 @@ public class WarmPressingServiceImpl implements WarmPressingService {
         if (StringUtils.isBlank(mainVehicle.getReceiverIdNumber())) {
             return BaseResponse.failure("主挂车辆接收器ID为空");
         }
-        // 1是上挂,2是下挂
-        if (param.getType() == 1) {
-            if (StringUtils.isBlank(minorVehicle.getReceiverIdNumber())) {
-                return BaseResponse.failure("挂车车辆接收器ID为空");
+        // redis锁
+        String lockKey = VEHICLE_HANG_KEY_PREFIX + mainVehicle.getReceiverIdNumber();
+        if (!this.tryLock(lockKey)) {
+            return BaseResponse.failure("当前车辆操作中");
+        }
+        try {
+            // 1是上挂,2是下挂
+            if (param.getType() == 1) {
+                if (StringUtils.isBlank(minorVehicle.getReceiverIdNumber())) {
+                    return BaseResponse.failure("挂车车辆接收器ID为空");
+                }
+                jt808FeignService.trailerHangOn(
+                        mainVehicle.getReceiverIdNumber(), minorVehicle.getReceiverIdNumber());
+            } else if (param.getType() == 2) {
+                jt808FeignService.trailerHangUnder(
+                        mainVehicle.getReceiverIdNumber());
             }
-            jt808FeignService.trailerHangOn(
-                    mainVehicle.getReceiverIdNumber(), minorVehicle.getReceiverIdNumber());
-
-        } else if (param.getType() == 2) {
-            jt808FeignService.trailerHangUnder(
-                    mainVehicle.getReceiverIdNumber());
-
+        } catch (Exception e) {
+            log.error("上下挂失败, error:{}", e.getMessage());
+            this.unLock(lockKey);
+            return BaseResponse.failure("上下挂失败");
         }
         return BaseResponse.ok();
     }
@@ -548,7 +561,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
      * @param param
      */
     @Override
-    public void trailerInstallCallback(TrailerInstallCallbackParam param) {
+    public void trailerUnInstallCallback(TrailerInstallCallbackParam param) {
         // 查询车辆挂车绑定信息
         VehicleTrailerInfo main = vehicleTrailerInfoMapper.selectOne(
                 new LambdaQueryWrapper<VehicleTrailerInfo>()
@@ -646,20 +659,29 @@ public class WarmPressingServiceImpl implements WarmPressingService {
             minorUpdateParam.setMinorRelayId(param.getMainRelay());
             vehicleTrailerInfoMapper.updateById(minorUpdateParam);
         }
-        // 绑定主车中继器
-        if (param.getType() == 1) {
-            jt808FeignService.bindRepeater(1, vehicle.getReceiverIdNumber(),
-                    param.getMainRelay());
-
-            // 绑定主车挂车中继器
-        } else if (param.getType() == 2) {
-            jt808FeignService.bindRepeater(1,
-                    vehicle.getReceiverIdNumber(),
-                    param.getMainRelay());
-
-            jt808FeignService.bindRepeater(1,
-                    vehicle.getReceiverIdNumber(),
-                    param.getMinorRelay());
+        // redis锁
+        String lockKey = BINDING_RELAY_KEY_PREFIX + vehicle.getReceiverIdNumber();
+        if (!this.tryLock(lockKey)) {
+            return BaseResponse.failure("当前车辆操作中");
+        }
+        try {
+            // 绑定主车中继器
+            if (param.getType() == 1) {
+                jt808FeignService.bindRepeater(1, vehicle.getReceiverIdNumber(),
+                        param.getMainRelay());
+                // 绑定主车挂车中继器
+            } else if (param.getType() == 2) {
+                jt808FeignService.bindRepeater(1,
+                        vehicle.getReceiverIdNumber(),
+                        param.getMainRelay());
+                jt808FeignService.bindRepeater(1,
+                        vehicle.getReceiverIdNumber(),
+                        param.getMinorRelay());
+            }
+        } catch (Exception e) {
+            log.error("绑定中继器失败, error:{}", e.getMessage());
+            this.unLock(lockKey);
+            return BaseResponse.failure("绑定中继器失败");
         }
         return BaseResponse.ok();
     }
@@ -681,6 +703,11 @@ public class WarmPressingServiceImpl implements WarmPressingService {
         }
         if (StringUtils.isBlank(mainVehicle.getReceiverIdNumber())) {
             return BaseResponse.failure("主车辆接收器ID为空");
+        }
+        // redis锁
+        String lockKey = SYNC_WHEEL_KEY_PREFIX + mainVehicle.getReceiverIdNumber();
+        if (!this.tryLock(lockKey)) {
+            return BaseResponse.failure("当前车辆操作中");
         }
         VehicleSpecEntity mainVehicleSpec = vehicleSpecMapper.selectOne(
                 new LambdaQueryWrapper<VehicleSpecEntity>()
@@ -718,27 +745,34 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                             .eq(AssetTire::getLicensePlate, minorVehicle.getLicensePlate())
                             .eq(AssetTire::getIsDelete, AssetTireConstant.NOT_DELETE));
         }
-        // 同步主车轮位
-        List<Integer> mainTireSiteList = this.getTireSiteIdList(mainVehicleSpec);
-        for (Integer tireSiteId : mainTireSiteList) {
-            AssetTire assetTire = this.getAssetTire(tireSiteId, mainAssetTireList);
-            if (assetTire != null) {
-                // 调用设备接口
-                jt808FeignService.syncWheel(1, tireSiteId, mainVehicle.getReceiverIdNumber(),
-                        assetTire.getSensorId());
-            }
-        }
-        if (minorVehicle != null) {
-            // 同步挂车轮位
-            List<Integer> minorTireSiteList = this.getTireSiteIdList(minorVehicleSpec);
-            for (Integer tireSiteId : minorTireSiteList) {
-                AssetTire assetTire = this.getAssetTire(tireSiteId, minorAssetTireList);
+        try {
+            // 同步主车轮位
+            List<Integer> mainTireSiteList = this.getTireSiteIdList(mainVehicleSpec);
+            for (Integer tireSiteId : mainTireSiteList) {
+                AssetTire assetTire = this.getAssetTire(tireSiteId, mainAssetTireList);
                 if (assetTire != null) {
                     // 调用设备接口
-                    jt808FeignService.syncWheel(2, tireSiteId, mainVehicle.getReceiverIdNumber(),
+                    jt808FeignService.syncWheel(1, tireSiteId, mainVehicle.getReceiverIdNumber(),
                             assetTire.getSensorId());
                 }
             }
+            if (minorVehicle != null) {
+                // 同步挂车轮位
+                List<Integer> minorTireSiteList = this.getTireSiteIdList(minorVehicleSpec);
+                for (Integer tireSiteId : minorTireSiteList) {
+                    AssetTire assetTire = this.getAssetTire(tireSiteId, minorAssetTireList);
+                    if (assetTire != null) {
+                        // 调用设备接口
+                        jt808FeignService.syncWheel(2, tireSiteId,
+                                mainVehicle.getReceiverIdNumber(),
+                                assetTire.getSensorId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("同步轮位失败, error:{}", e.getMessage());
+            this.unLock(lockKey);
+            return BaseResponse.failure("同步轮位失败");
         }
         return BaseResponse.ok();
     }
@@ -772,54 +806,64 @@ public class WarmPressingServiceImpl implements WarmPressingService {
         if (StringUtils.isBlank(mainVehicle.getReceiverIdNumber())) {
             return BaseResponse.failure("主车辆接收器ID为空");
         }
-        VehicleSpecEntity mainVehicleSpec = vehicleSpecMapper.selectOne(
-                new LambdaQueryWrapper<VehicleSpecEntity>()
-                        .eq(VehicleSpecEntity::getId, mainVehicle.getSpecId())
-                        .eq(VehicleSpecEntity::getIsDeleted, false));
-        if (mainVehicleSpec == null) {
-            return BaseResponse.failure("主车辆型号信息不存在");
+        // redis锁
+        String lockKey = SYNC_THRESHOLD_KEY_PREFIX + mainVehicle.getReceiverIdNumber();
+        if (!this.tryLock(lockKey)) {
+            return BaseResponse.failure("当前车辆操作中");
         }
-        if (mainVehicleSpec.getWheelbaseCount() == null) {
-            return BaseResponse.failure("主车辆型号设置异常");
-        }
-        VehicleSpecEntity minorVehicleSpec = null;
-        VehicleEntity minorVehicle = null;
-        if (StringUtils.isNotBlank(param.getMinorLicensePlate())) {
-            minorVehicle = vehicleMapper.selectOne(
-                    new LambdaQueryWrapper<VehicleEntity>()
-                            .eq(VehicleEntity::getLicensePlate, param.getMinorLicensePlate())
-                            .eq(VehicleEntity::getIsDeleted, false));
-        }
-        if (minorVehicle != null) {
-            minorVehicleSpec = vehicleSpecMapper.selectOne(
+        try {
+            VehicleSpecEntity mainVehicleSpec = vehicleSpecMapper.selectOne(
                     new LambdaQueryWrapper<VehicleSpecEntity>()
-                            .eq(VehicleSpecEntity::getId, minorVehicle.getSpecId())
+                            .eq(VehicleSpecEntity::getId, mainVehicle.getSpecId())
                             .eq(VehicleSpecEntity::getIsDeleted, false));
-        }
-        int totalAxleCount = mainVehicleSpec.getWheelbaseCount();
-        if (minorVehicleSpec != null) {
-            if (minorVehicleSpec.getWheelbaseCount() != null) {
-                totalAxleCount += minorVehicleSpec.getWheelbaseCount();
+            if (mainVehicleSpec == null) {
+                return BaseResponse.failure("主车辆型号信息不存在");
             }
+            if (mainVehicleSpec.getWheelbaseCount() == null) {
+                return BaseResponse.failure("主车辆型号设置异常");
+            }
+            VehicleSpecEntity minorVehicleSpec = null;
+            VehicleEntity minorVehicle = null;
+            if (StringUtils.isNotBlank(param.getMinorLicensePlate())) {
+                minorVehicle = vehicleMapper.selectOne(
+                        new LambdaQueryWrapper<VehicleEntity>()
+                                .eq(VehicleEntity::getLicensePlate, param.getMinorLicensePlate())
+                                .eq(VehicleEntity::getIsDeleted, false));
+            }
+            if (minorVehicle != null) {
+                minorVehicleSpec = vehicleSpecMapper.selectOne(
+                        new LambdaQueryWrapper<VehicleSpecEntity>()
+                                .eq(VehicleSpecEntity::getId, minorVehicle.getSpecId())
+                                .eq(VehicleSpecEntity::getIsDeleted, false));
+            }
+            int totalAxleCount = mainVehicleSpec.getWheelbaseCount();
+            if (minorVehicleSpec != null) {
+                if (minorVehicleSpec.getWheelbaseCount() != null) {
+                    totalAxleCount += minorVehicleSpec.getWheelbaseCount();
+                }
+            }
+            SyncIntervalParam syncIntervalParam = new SyncIntervalParam();
+            syncIntervalParam.setZhoushu(totalAxleCount);
+            syncIntervalParam.setGaowen(
+                    Integer.valueOf(mainVehicleSpec.getHighTemperatureAlarmLevel1().toString()));
+            List<TirePressureIntervalParam> taiya = new ArrayList<>();
+            for (int i = 1; i <= totalAxleCount; i++) {
+                TirePressureIntervalParam tirePressureIntervalParam = new TirePressureIntervalParam();
+                tirePressureIntervalParam.setIdx(i);
+                tirePressureIntervalParam.setGaoya(
+                        Double.valueOf(mainVehicleSpec.getHighPressureAlarmLevel1().toString()));
+                tirePressureIntervalParam.setDiya(
+                        Double.valueOf(mainVehicleSpec.getLowPressureAlarmLevel1().toString()));
+                taiya.add(tirePressureIntervalParam);
+            }
+            syncIntervalParam.setTaiya(taiya);
+            jt808FeignService.syncInterval(mainVehicle.getReceiverIdNumber(),
+                    JSON.toJSONString(syncIntervalParam));
+        } catch (Exception e) {
+            log.error("同步阈值失败, error:{}", e.getMessage());
+            this.unLock(lockKey);
+            return BaseResponse.failure("同步阈值失败");
         }
-        SyncIntervalParam syncIntervalParam = new SyncIntervalParam();
-        syncIntervalParam.setZhoushu(totalAxleCount);
-        syncIntervalParam.setGaowen(
-                Integer.valueOf(mainVehicleSpec.getHighTemperatureAlarmLevel1().toString()));
-        List<TirePressureIntervalParam> taiya = new ArrayList<>();
-        for (int i = 1; i <= totalAxleCount; i++) {
-            TirePressureIntervalParam tirePressureIntervalParam = new TirePressureIntervalParam();
-            tirePressureIntervalParam.setIdx(i);
-            tirePressureIntervalParam.setGaoya(
-                    Double.valueOf(mainVehicleSpec.getHighPressureAlarmLevel1().toString()));
-            tirePressureIntervalParam.setDiya(
-                    Double.valueOf(mainVehicleSpec.getLowPressureAlarmLevel1().toString()));
-            taiya.add(tirePressureIntervalParam);
-        }
-        syncIntervalParam.setTaiya(taiya);
-        jt808FeignService.syncInterval(mainVehicle.getReceiverIdNumber(),
-                JSON.toJSONString(syncIntervalParam));
-
         return BaseResponse.ok();
     }
 
@@ -1004,7 +1048,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                     if (tireSiteResult != null) {
                         tireTrendDetailVo.setTireSiteName(tireSiteResult.getTireSiteName());
                     }
-                } else {
+                } else if (tirePressure.getType() == 1) {
                     TireSiteResult tireSiteResult = TireSiteUtil.getTireSiteResult(
                             Integer.valueOf(tirePressure.getTireSiteId()),
                             minorVehicleSpec.getSpecType(), minorVehicleSpec.getWheelCount(),
@@ -1260,7 +1304,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                                 Integer.valueOf(tirePressureData.getTireSiteId()),
                                 mainVehicleSpec.getSpecType(), mainVehicleSpec.getWheelCount(),
                                 mainVehicleSpec.getWheelbaseType());
-                    } else {
+                    } else if (tirePressureData.getType() == 1) {
                         tireSiteResult = TireSiteUtil.getMinorTireSiteResult(
                                 Integer.valueOf(tirePressureData.getTireSiteId()));
                     }
@@ -1345,7 +1389,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                     if (tireSiteResult != null) {
                         tireTemperatureTrendVo.setTireSiteName(tireSiteResult.getTireSiteName());
                     }
-                } else {
+                } else if (tirePressure.getType() == 1) {
                     TireSiteResult tireSiteResult = TireSiteUtil.getTireSiteResult(
                             tireTemperatureTrendVo.getTireSiteId(),
                             minorVehicleSpec.getSpecType(), minorVehicleSpec.getWheelCount(),
@@ -1379,7 +1423,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                     if (tireSiteResult != null) {
                         tirePressureTrendVo.setTireSiteName(tireSiteResult.getTireSiteName());
                     }
-                } else {
+                } else if (tirePressure.getType() == 1) {
                     TireSiteResult tireSiteResult = TireSiteUtil.getTireSiteResult(
                             tirePressureTrendVo.getTireSiteId(),
                             minorVehicleSpec.getSpecType(), minorVehicleSpec.getWheelCount(),
@@ -1495,4 +1539,13 @@ public class WarmPressingServiceImpl implements WarmPressingService {
         }
     }
 
+    private Boolean tryLock(String key) {
+        // redis锁
+        Boolean absent = redisTemplate.opsForValue().setIfAbsent(key, "", 1, TimeUnit.HOURS);
+        return absent;
+    }
+
+    private void unLock(String key) {
+        redisTemplate.delete(key);
+    }
 }

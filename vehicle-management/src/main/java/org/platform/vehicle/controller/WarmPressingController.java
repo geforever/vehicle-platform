@@ -186,7 +186,7 @@ public class WarmPressingController {
     public void trailerInstallCallback(@RequestBody TrailerInstallCallbackParam param) {
         log.info("温压管理-实时温压-上下挂回调, url:/warmPressing/trailerInstallCallback, param:{}",
                 JSONObject.toJSON(param));
-        warmPressingService.trailerInstallCallback(param);
+        warmPressingService.trailerUnInstallCallback(param);
     }
 
     /**
