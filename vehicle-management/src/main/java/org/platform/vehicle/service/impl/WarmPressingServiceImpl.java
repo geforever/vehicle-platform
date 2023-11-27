@@ -4,6 +4,8 @@ import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_
 import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_POWER_OFF;
 import static org.platform.vehicle.constant.LocalWarningConstant.VEHICLE_STATUS_RUNNING;
 import static org.platform.vehicle.constant.LocalWarningConstant.WARNING_TYPE_MAIN_POWER_OFF;
+import static org.platform.vehicle.constant.VehicleTrailerInfoConstant.TYPE_MAIN_MINOR;
+import static org.platform.vehicle.constant.VehicleTrailerInfoConstant.TYPE_MINOR_MAIN;
 import static org.platform.vehicle.constant.WarningPressureConstant.BINDING_RELAY_KEY_PREFIX;
 import static org.platform.vehicle.constant.WarningPressureConstant.SYNC_THRESHOLD_KEY_PREFIX;
 import static org.platform.vehicle.constant.WarningPressureConstant.SYNC_WHEEL_KEY_PREFIX;
@@ -15,7 +17,20 @@ import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.platform.vehicle.conf.ExcelCellWidthStyleStrategy;
 import org.platform.vehicle.conf.VehicleSpecContext;
 import org.platform.vehicle.constant.AssetTireConstant;
@@ -38,6 +53,7 @@ import org.platform.vehicle.entity.VehicleEntity;
 import org.platform.vehicle.entity.VehicleSpecEntity;
 import org.platform.vehicle.entity.VehicleTrailerInfo;
 import org.platform.vehicle.entity.WarningDetail;
+import org.platform.vehicle.exception.BaseException;
 import org.platform.vehicle.feign.param.SyncIntervalParam;
 import org.platform.vehicle.feign.param.TirePressureIntervalParam;
 import org.platform.vehicle.mapper.AssetTireFitRecordMapper;
@@ -53,7 +69,9 @@ import org.platform.vehicle.mapper.jt808.NewestGeoLocationMapper;
 import org.platform.vehicle.mapper.jt808.TireNewestDataMapper;
 import org.platform.vehicle.mapper.jt808.TirePressureDataRepository;
 import org.platform.vehicle.mapper.jt808.TirePressureRepository;
+import org.platform.vehicle.param.BindRelayCallbackParam;
 import org.platform.vehicle.param.RelayBindParam;
+import org.platform.vehicle.param.SyncWheelCallbackParam;
 import org.platform.vehicle.param.TireCheckDataDetailParam;
 import org.platform.vehicle.param.TireTrackParam;
 import org.platform.vehicle.param.TireWarningDataParam;
@@ -61,8 +79,11 @@ import org.platform.vehicle.param.TrailerInstallCallbackParam;
 import org.platform.vehicle.param.VehicleHangParam;
 import org.platform.vehicle.param.WarmPressingConditionQuery;
 import org.platform.vehicle.param.WarmPressingExportParam;
+import org.platform.vehicle.param.WarningThresholdSyncCallbackParam;
 import org.platform.vehicle.param.WarningThresholdSyncParam;
 import org.platform.vehicle.param.WheelSyncParam;
+import org.platform.vehicle.response.BasePageResponse;
+import org.platform.vehicle.response.BaseResponse;
 import org.platform.vehicle.service.Jt808FeignService;
 import org.platform.vehicle.service.WarmPressingService;
 import org.platform.vehicle.util.AmapUtil;
@@ -70,6 +91,8 @@ import org.platform.vehicle.util.DynamicIndex;
 import org.platform.vehicle.util.EasyExcelUtils;
 import org.platform.vehicle.util.TireSiteUtil;
 import org.platform.vehicle.util.WarningHelper;
+import org.platform.vehicle.utils.DateUtils;
+import org.platform.vehicle.utils.UserContext;
 import org.platform.vehicle.vo.AltitudeTrendVo;
 import org.platform.vehicle.vo.SpeedAltitudeExportVo;
 import org.platform.vehicle.vo.SpeedTrendVo;
@@ -81,6 +104,7 @@ import org.platform.vehicle.vo.TireTrendDetailDataVo;
 import org.platform.vehicle.vo.TireTrendDetailVo;
 import org.platform.vehicle.vo.TireTrendParam;
 import org.platform.vehicle.vo.TireTrendVo;
+import org.platform.vehicle.vo.UserVo;
 import org.platform.vehicle.vo.VehicleTrackVo;
 import org.platform.vehicle.vo.WarmPressingDetailVo;
 import org.platform.vehicle.vo.WarmPressingPageVo;
@@ -92,29 +116,9 @@ import org.platform.vehicle.vo.amap.ConvertCoordVo;
 import org.platform.vehicle.vo.amap.LiveVo;
 import org.platform.vehicle.vo.amap.RegeocodeResultVo;
 import org.platform.vehicle.vo.amap.RegeocodeVo;
-import org.platform.vehicle.exception.BaseException;
-import org.platform.vehicle.response.BasePageResponse;
-import org.platform.vehicle.response.BaseResponse;
-import org.platform.vehicle.utils.DateUtils;
-import org.platform.vehicle.utils.UserContext;
-import org.platform.vehicle.vo.UserVo;
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 /**
  * @Author gejiawei
@@ -247,7 +251,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                 new LambdaQueryWrapper<VehicleTrailerInfo>()
                         .eq(VehicleTrailerInfo::getMainLicensePlate, vehicle.getLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MAIN_MINOR));
+                                TYPE_MAIN_MINOR));
         WarmPressingDetailVo warmPressingDetailVo = new WarmPressingDetailVo();
         warmPressingDetailVo.setLicensePlate(vehicle.getLicensePlate());
         warmPressingDetailVo.setGpsId(vehicle.getReceiverIdNumber());
@@ -509,13 +513,13 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                         .eq(VehicleTrailerInfo::getMainLicensePlate, param.getMainLicensePlate())
                         .eq(VehicleTrailerInfo::getMinorLicensePlate, param.getMinorLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MAIN_MINOR));
+                                TYPE_MAIN_MINOR));
         VehicleTrailerInfo minor = vehicleTrailerInfoMapper.selectOne(
                 new LambdaQueryWrapper<VehicleTrailerInfo>()
                         .eq(VehicleTrailerInfo::getMainLicensePlate, param.getMinorLicensePlate())
                         .eq(VehicleTrailerInfo::getMinorLicensePlate, param.getMainLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MINOR_MAIN));
+                                TYPE_MINOR_MAIN));
         // 查询主挂车辆信息
         VehicleEntity mainVehicle = vehicleMapper.selectOne(new LambdaQueryWrapper<VehicleEntity>()
                 .eq(VehicleEntity::getLicensePlate, param.getMainLicensePlate())
@@ -568,13 +572,13 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                         .eq(VehicleTrailerInfo::getMainRelayId, param.getMainRelayId())
                         .eq(VehicleTrailerInfo::getMinorRelayId, param.getMinorRelayId())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MAIN_MINOR));
+                                TYPE_MAIN_MINOR));
         VehicleTrailerInfo minor = vehicleTrailerInfoMapper.selectOne(
                 new LambdaQueryWrapper<VehicleTrailerInfo>()
                         .eq(VehicleTrailerInfo::getMainRelayId, param.getMinorRelayId())
                         .eq(VehicleTrailerInfo::getMinorRelayId, param.getMainRelayId())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MINOR_MAIN));
+                                TYPE_MINOR_MAIN));
         if (main == null || minor == null) {
             log.error("主挂信息不存在, param:{}", param);
             return;
@@ -614,7 +618,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                         .eq(VehicleTrailerInfo::getMainLicensePlate, param.getMainLicensePlate())
                         .eq(VehicleTrailerInfo::getMinorLicensePlate, param.getMinorLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MAIN_MINOR));
+                                TYPE_MAIN_MINOR));
         VehicleEntity vehicle = vehicleMapper.selectOne(
                 new LambdaQueryWrapper<VehicleEntity>()
                         .eq(VehicleEntity::getLicensePlate, param.getMainLicensePlate())
@@ -652,7 +656,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                             .eq(VehicleTrailerInfo::getMinorLicensePlate,
                                     param.getMainLicensePlate())
                             .eq(VehicleTrailerInfo::getType,
-                                    VehicleTrailerInfoConstant.TYPE_MINOR_MAIN));
+                                    TYPE_MINOR_MAIN));
             VehicleTrailerInfo minorUpdateParam = new VehicleTrailerInfo();
             minorUpdateParam.setId(minor.getId());
             minorUpdateParam.setMainRelayId(param.getMinorRelay());
@@ -948,7 +952,7 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                 new LambdaQueryWrapper<VehicleTrailerInfo>()
                         .eq(VehicleTrailerInfo::getMainLicensePlate, mainVehicle.getLicensePlate())
                         .eq(VehicleTrailerInfo::getType,
-                                VehicleTrailerInfoConstant.TYPE_MAIN_MINOR));
+                                TYPE_MAIN_MINOR));
         VehicleEntity minorVehicle = null;
         VehicleSpecEntity minorVehicleSpec = null;
         if (vehicleTrailerInfo != null) {
@@ -1229,6 +1233,93 @@ public class WarmPressingServiceImpl implements WarmPressingService {
                 ioException.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public void bindRelayCallback(BindRelayCallbackParam param) {
+        log.info("绑定中继器回调, param:{}", param);
+        // redis 解锁
+        String lockKey = BINDING_RELAY_KEY_PREFIX + param.getReceiverIdNumber();
+        this.unLock(lockKey);
+        log.info("绑定中继器回调成功, param:{}", param);
+    }
+
+    @Override
+    public void syncWheelCallback(SyncWheelCallbackParam param) {
+        log.info("轮位同步回调, param:{}", param);
+        // redis解锁
+        String lockKey = SYNC_WHEEL_KEY_PREFIX + param.getReceiverIdNumber();
+        this.unLock(lockKey);
+        log.info("轮位同步回调成功, param:{}", param);
+    }
+
+    @Override
+    public void syncThresholdCallback(WarningThresholdSyncCallbackParam param) {
+        log.info("阈值同步回调, param:{}", param);
+        // redis解锁
+        String lockKey = SYNC_THRESHOLD_KEY_PREFIX + param.getReceiverIdNumber();
+        this.unLock(lockKey);
+        log.info("阈值同步回调成功, param:{}", param);
+    }
+
+    @Override
+    public void trailerInstallCallback(TrailerInstallCallbackParam param) {
+        VehicleEntity mainVehicle = vehicleMapper.selectOne(
+                new LambdaQueryWrapper<VehicleEntity>()
+                        .eq(VehicleEntity::getReceiverIdNumber, param.getReceiverIdNumber())
+                        .eq(VehicleEntity::getIsDeleted, false));
+        if (mainVehicle == null) {
+            log.error("上挂回调失败,车辆信息不存在, param:{}", param);
+            return;
+        }
+        // 根据挂车中继器查询挂车信息
+        VehicleEntity minorVehicle = vehicleMapper.selectOne(
+                new LambdaQueryWrapper<VehicleEntity>()
+                        .eq(VehicleEntity::getRepeaterIdNumber, param.getMinorRelayId())
+                        .eq(VehicleEntity::getIsDeleted, false));
+        if (minorVehicle == null) {
+            log.error("上挂回调失败,挂车信息不存在, param:{}", param);
+            return;
+        }
+        // 查询车辆挂车绑定信息
+        VehicleTrailerInfo main = vehicleTrailerInfoMapper.selectOne(
+                new LambdaQueryWrapper<VehicleTrailerInfo>()
+                        .eq(VehicleTrailerInfo::getMainLicensePlate, mainVehicle.getLicensePlate())
+                        .eq(VehicleTrailerInfo::getMinorLicensePlate,
+                                minorVehicle.getLicensePlate())
+                        .eq(VehicleTrailerInfo::getType, TYPE_MAIN_MINOR));
+        VehicleTrailerInfo minor = vehicleTrailerInfoMapper.selectOne(
+                new LambdaQueryWrapper<VehicleTrailerInfo>()
+                        .eq(VehicleTrailerInfo::getMainLicensePlate, minorVehicle.getLicensePlate())
+                        .eq(VehicleTrailerInfo::getMinorLicensePlate, mainVehicle.getLicensePlate())
+                        .eq(VehicleTrailerInfo::getType, TYPE_MINOR_MAIN));
+        if (main != null) {
+            vehicleTrailerInfoMapper.deleteById(main.getId());
+        }
+        if (minor != null) {
+            vehicleTrailerInfoMapper.deleteById(minor.getId());
+        }
+        VehicleTrailerInfo mainInsertParam = new VehicleTrailerInfo();
+        mainInsertParam.setMainLicensePlate(mainVehicle.getLicensePlate());
+        mainInsertParam.setMinorLicensePlate(minorVehicle.getLicensePlate());
+        mainInsertParam.setMainRelayId(mainVehicle.getReceiverIdNumber());
+        mainInsertParam.setMinorRelayId(mainVehicle.getReceiverIdNumber());
+        mainInsertParam.setType(TYPE_MAIN_MINOR);
+        mainInsertParam.setUpdateTime(new Date());
+        vehicleTrailerInfoMapper.insert(mainInsertParam);
+
+        VehicleTrailerInfo minorInsertParam = new VehicleTrailerInfo();
+        minorInsertParam.setMainLicensePlate(minorVehicle.getLicensePlate());
+        minorInsertParam.setMinorLicensePlate(mainVehicle.getLicensePlate());
+        minorInsertParam.setMainRelayId(minorVehicle.getReceiverIdNumber());
+        minorInsertParam.setMinorRelayId(mainVehicle.getReceiverIdNumber());
+        minorInsertParam.setType(TYPE_MINOR_MAIN);
+        minorInsertParam.setUpdateTime(new Date());
+        vehicleTrailerInfoMapper.insert(minorInsertParam);
+        // redis 解锁
+        String lockKey = VEHICLE_HANG_KEY_PREFIX + param.getReceiverIdNumber();
+        this.unLock(lockKey);
+        log.info("主挂信息删除成功, param:{}", param);
     }
 
     private void getSpeedAltitudeExportVoList(WarmPressingExportParam param,

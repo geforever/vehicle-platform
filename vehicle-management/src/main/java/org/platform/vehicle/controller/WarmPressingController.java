@@ -1,12 +1,15 @@
 package org.platform.vehicle.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import org.platform.vehicle.param.BindRelayCallbackParam;
 import org.platform.vehicle.param.RelayBindParam;
+import org.platform.vehicle.param.SyncWheelCallbackParam;
 import org.platform.vehicle.param.TireTrackParam;
 import org.platform.vehicle.param.TrailerInstallCallbackParam;
 import org.platform.vehicle.param.VehicleHangParam;
 import org.platform.vehicle.param.WarmPressingConditionQuery;
 import org.platform.vehicle.param.WarmPressingExportParam;
+import org.platform.vehicle.param.WarningThresholdSyncCallbackParam;
 import org.platform.vehicle.param.WarningThresholdSyncParam;
 import org.platform.vehicle.param.WheelSyncParam;
 import org.platform.vehicle.service.WarmPressingService;
@@ -40,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/warmPressing")
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class WarmPressingController {
+
 
     private final WarmPressingService warmPressingService;
 
@@ -124,6 +128,30 @@ public class WarmPressingController {
     }
 
     /**
+     * 温压管理-实时温压-下挂回调
+     *
+     * @param param
+     */
+    @PostMapping("/callback/trailerUnInstall")
+    public void trailerInstallCallback(@RequestBody TrailerInstallCallbackParam param) {
+        log.info("温压管理-实时温压-下挂回调, url:/warmPressing/trailerInstallCallback, param:{}",
+                JSONObject.toJSON(param));
+        warmPressingService.trailerUnInstallCallback(param);
+    }
+
+    /**
+     * 温压管理-实时温压-上挂回调
+     *
+     * @param param
+     */
+    @PostMapping("/callback/trailerInstall")
+    public void trailerUnInstallCallback(@RequestBody TrailerInstallCallbackParam param) {
+        log.info("温压管理-实时温压-上挂回调, url:/warmPressing/trailerUnInstallCallback, param:{}",
+                JSONObject.toJSON(param));
+        warmPressingService.trailerInstallCallback(param);
+    }
+
+    /**
      * 温压管理-实时温压-根据车牌获取中继器ID
      *
      * @param licensePlate
@@ -136,7 +164,6 @@ public class WarmPressingController {
         return warmPressingService.getRelayId(licensePlate);
     }
 
-
     /**
      * 温压管理-实时温压-绑定中继器
      *
@@ -148,6 +175,18 @@ public class WarmPressingController {
         log.info("温压管理-实时温压-绑定中继器, url:/warmPressing/bindRelay, param:{}",
                 JSONObject.toJSON(param));
         return warmPressingService.bindRelay(param);
+    }
+
+    /**
+     * 温压管理-实时温压-绑定中继器回调
+     *
+     * @param param
+     */
+    @PostMapping("/callback/bindRelay")
+    public void bindRelayCallback(@RequestBody BindRelayCallbackParam param) {
+        log.info("温压管理-实时温压-绑定中继器回调, url:/warmPressing/bindRelayCallback, param:{}",
+                JSONObject.toJSON(param));
+        warmPressingService.bindRelayCallback(param);
     }
 
     /**
@@ -164,6 +203,18 @@ public class WarmPressingController {
     }
 
     /**
+     * 温压管理-实时温压-轮位同步回调
+     *
+     * @param param
+     */
+    @PostMapping("/callback/syncWheel")
+    public void syncWheelCallback(@RequestBody SyncWheelCallbackParam param) {
+        log.info("温压管理-实时温压-轮位同步回调, url:/warmPressing/syncWheelRollback, param:{}",
+                JSONObject.toJSON(param));
+        warmPressingService.syncWheelCallback(param);
+    }
+
+    /**
      * 温压管理-实时温压-阈值同步
      *
      * @param param
@@ -176,17 +227,17 @@ public class WarmPressingController {
         return warmPressingService.syncThreshold(param);
     }
 
-
     /**
-     * 温压管理-实时温压-上下挂回调
+     * 温压管理-实时温压-阈值同步回调
      *
      * @param param
      */
-    @PostMapping("/trailerInstallCallback")
-    public void trailerInstallCallback(@RequestBody TrailerInstallCallbackParam param) {
-        log.info("温压管理-实时温压-上下挂回调, url:/warmPressing/trailerInstallCallback, param:{}",
+    @PostMapping("/callback/syncThreshold")
+    public void syncThresholdCallback(@RequestBody WarningThresholdSyncCallbackParam param) {
+        log.info(
+                "温压管理-实时温压-阈值同步回调, url:/warmPressing/syncThresholdRollback, param:{}",
                 JSONObject.toJSON(param));
-        warmPressingService.trailerUnInstallCallback(param);
+        warmPressingService.syncThresholdCallback(param);
     }
 
     /**

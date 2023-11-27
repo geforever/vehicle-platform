@@ -1,11 +1,14 @@
 package org.platform.vehicle.service;
 
+import org.platform.vehicle.param.BindRelayCallbackParam;
 import org.platform.vehicle.param.RelayBindParam;
+import org.platform.vehicle.param.SyncWheelCallbackParam;
 import org.platform.vehicle.param.TireTrackParam;
 import org.platform.vehicle.param.TrailerInstallCallbackParam;
 import org.platform.vehicle.param.VehicleHangParam;
 import org.platform.vehicle.param.WarmPressingConditionQuery;
 import org.platform.vehicle.param.WarmPressingExportParam;
+import org.platform.vehicle.param.WarningThresholdSyncCallbackParam;
 import org.platform.vehicle.param.WarningThresholdSyncParam;
 import org.platform.vehicle.param.WheelSyncParam;
 import org.platform.vehicle.vo.TireStatusVo;
@@ -121,4 +124,11 @@ public interface WarmPressingService {
     void export(WarmPressingExportParam param, HttpServletResponse response);
 
 
+    void bindRelayCallback(BindRelayCallbackParam param);
+
+    void syncWheelCallback(SyncWheelCallbackParam param);
+
+    void syncThresholdCallback(WarningThresholdSyncCallbackParam param);
+
+    void trailerInstallCallback(TrailerInstallCallbackParam param);
 }

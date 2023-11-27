@@ -8,6 +8,10 @@ import lombok.Data;
  */
 @Data
 public class TrailerInstallCallbackParam {
+    /**
+     * 接收器ID
+     */
+    private String receiverIdNumber;
 
     /**
      * 主车中继器ID
