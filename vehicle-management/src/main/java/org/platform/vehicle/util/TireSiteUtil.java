@@ -101,11 +101,20 @@ public class TireSiteUtil {
                             } else if ("2".equals(actualAxle)) {
                                 tireSiteName.append("轮");
                             } else {
-                                if (value.indexOf(wheels) == 0) {
-                                    tireSiteName.append("外");
+                                if ("right".equals(key)) {
+                                    if (value.indexOf(wheels) == 0) {
+                                        tireSiteName.append("外");
+                                    } else {
+                                        tireSiteName.append("内");
+                                    }
                                 } else {
-                                    tireSiteName.append("内");
+                                    if (value.indexOf(wheels) == 0) {
+                                        tireSiteName.append("内");
+                                    } else {
+                                        tireSiteName.append("外");
+                                    }
                                 }
+
                             }
                             TireSiteResult tireSiteResult = new TireSiteResult();
                             tireSiteResult.setTireSiteName(tireSiteName.toString());
@@ -284,7 +293,8 @@ public class TireSiteUtil {
 //        Map<WheelBaseTypeEnum, WheelTypeEnum> wheelBaseTypeEnumWheelTypeEnumMap = WHEEL_TYPE_MAPPING.get(
 //                ZHU_CHE);
 //        System.out.println(JSON.toJSONString(wheelBaseTypeEnumWheelTypeEnumMap));
-        TireSiteResult tireSiteResult = getTireSiteResult(5, 1, "2,2,4", "1,2,2");
+        TireSiteResult tireSiteResult = getTireSiteResult(5, 1, "2,4,4", "1,2,2");
+//        TireSiteResult tireSiteResult = getTireSiteResult(10, 2, "4,4,4", "3,3,3");
         System.out.println(JSON.toJSONString(tireSiteResult));
     }
 
